@@ -673,9 +673,10 @@
   </div>
 </footer>
 
+<script src="./config.js"></script>
 <script>
-  // Point this at your deployed backend.
-  const API_BASE = "https://mc-modding-backend.onrender.com";
+  // GitHub Pages remains a static frontend; all auth/API requests go to the deployed backend.
+  const API_BASE = window.MC_MODDING_CONFIG?.apiBaseUrl || "https://mc-modding-backend.onrender.com";
 
   const authTabs = document.querySelectorAll(".auth-tab");
   const authForm = document.getElementById("auth-form");
