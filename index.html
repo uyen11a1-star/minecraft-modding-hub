@@ -1177,46 +1177,112 @@
     <aside
       class="drawer"
       id="compose-drawer"
-      aria-label="Tạo bài viết cộng đồng"
+      aria-label="Đăng tài nguyên Minecraft"
     >
       <div class="drawer-head">
         <div>
-          <span class="mono">Studio / new signal</span>
-          <h2>Ghi lại điều mới.</h2>
+          <span class="mono">Resource / publish</span>
+          <h2>Đăng tài nguyên.</h2>
         </div>
         <button class="close" data-close aria-label="Đóng">×</button>
       </div>
       <div class="drawer-body">
         <p class="notice" id="compose-notice"></p>
+        <p
+          style="
+            margin: 0 0 18px;
+            color: #607067;
+            font-size: 12px;
+            line-height: 1.6;
+          "
+        >
+          Chọn loại tài nguyên, khai báo compatibility và đính kèm tệp phát hành
+          của bạn.
+        </p>
         <form id="compose-form">
           <div class="field">
-            <label for="compose-title">Tiêu đề</label
+            <label for="resource-kind">Loại tài nguyên</label
+            ><select id="resource-kind" required>
+              <option value="Mod">Mod</option>
+              <option value="Resource Pack">Resource Pack</option>
+              <option value="Shader Pack">Shader Pack</option>
+              <option value="Datapack">Datapack</option>
+              <option value="Plugin">Plugin</option>
+              <option value="Modpack">Modpack</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="compose-title">Tên tài nguyên</label
             ><input
               id="compose-title"
               maxlength="160"
               required
-              placeholder="Bạn vừa giải được điều gì?"
+              placeholder="Ví dụ: Lumen Shaders"
             />
           </div>
           <div class="field">
-            <label for="compose-category">Dạng tín hiệu</label
-            ><select id="compose-category">
-              <option>Dev log</option>
-              <option>Guide</option>
-              <option>Shader</option>
-              <option>Showcase</option>
-              <option>Q&A</option>
+            <label for="resource-summary">Tóm tắt ngắn</label
+            ><input
+              id="resource-summary"
+              maxlength="220"
+              required
+              placeholder="Điểm chính người chơi nên biết trước khi cài"
+            />
+          </div>
+          <div class="field">
+            <label for="resource-minecraft-version">Minecraft version</label
+            ><input
+              id="resource-minecraft-version"
+              required
+              placeholder="Ví dụ: 1.21.1"
+            />
+          </div>
+          <div class="field">
+            <label for="resource-loader">Loader / server software</label
+            ><select id="resource-loader">
+              <option value="Không yêu cầu">Không yêu cầu</option>
+              <option>Fabric</option>
+              <option>Forge</option>
+              <option>NeoForge</option>
+              <option>Paper</option>
+              <option>Spigot</option>
+              <option>Velocity</option>
             </select>
           </div>
           <div class="field">
-            <label for="compose-content">Nội dung</label
+            <label for="resource-release-version">Phiên bản phát hành</label
+            ><input
+              id="resource-release-version"
+              required
+              placeholder="Ví dụ: 1.0.0"
+            />
+          </div>
+          <div class="field">
+            <label for="resource-file"
+              >Tệp phát hành (.jar, .zip, .mrpack)</label
+            ><input
+              id="resource-file"
+              type="file"
+              required
+              accept=".jar,.zip,.mrpack,application/java-archive,application/zip"
+            />
+            <small
+              id="resource-file-status"
+              style="color: #718078; line-height: 1.5"
+              >Chưa chọn tệp.</small
+            >
+          </div>
+          <div class="field">
+            <label for="compose-content">Mô tả &amp; changelog</label
             ><textarea
               id="compose-content"
               required
-              placeholder="Ghi lại cách làm, vấn đề, kết quả hoặc điều bạn muốn cộng đồng biết…"
+              placeholder="Mô tả tính năng, hướng dẫn cài đặt, thay đổi của phiên bản này…"
             ></textarea>
           </div>
-          <button class="btn lime wide" type="submit">Phát tín hiệu →</button>
+          <button class="btn lime wide" type="submit">
+            Chuẩn bị tệp phát hành →
+          </button>
         </form>
       </div>
     </aside>
@@ -1545,33 +1611,48 @@
             state.authMode === "signup" ? "Tạo tài khoản" : "Đăng nhập";
         }
       });
+      $("#resource-file").addEventListener("change", () => {
+        const file = $("#resource-file").files?.[0];
+        $("#resource-file-status").textContent = file
+          ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`
+          : "Chưa chọn tệp.";
+      });
       $("#compose-form").addEventListener("submit", async (event) => {
         event.preventDefault();
         const submit = event.submitter;
-        submit.disabled = true;
         clearNote("compose-notice");
-        try {
-          const response = await fetch(API_BASE + "/posts", {
-            method: "POST",
-            headers: headers(true),
-            body: JSON.stringify({
-              title: $("#compose-title").value.trim(),
-              category: $("#compose-category").value,
-              content: $("#compose-content").value.trim(),
-            }),
-          });
-          const data = await response.json();
-          if (!response.ok)
-            throw new Error(data.detail || "Không thể phát tín hiệu.");
-          note("compose-notice", "Đã đưa tín hiệu vào luồng cộng đồng.", "ok");
-          $("#compose-form").reset();
-          await loadPosts();
-          setTimeout(closeDrawers, 470);
-        } catch (error) {
-          note("compose-notice", error.message || "Không thể phát tín hiệu.");
-        } finally {
-          submit.disabled = false;
+        const file = $("#resource-file").files?.[0];
+        if (!file) {
+          note("compose-notice", "Hãy chọn tệp phát hành trước.");
+          return;
         }
+        if (!/\.(jar|zip|mrpack)$/i.test(file.name)) {
+          note("compose-notice", "Chỉ nhận tệp .jar, .zip hoặc .mrpack.");
+          return;
+        }
+        if (file.size > 500 * 1024 * 1024) {
+          note("compose-notice", "Tệp vượt quá giới hạn 500 MB.");
+          return;
+        }
+        const payload = {
+          kind: $("#resource-kind").value,
+          name: $("#compose-title").value.trim(),
+          summary: $("#resource-summary").value.trim(),
+          minecraftVersion: $("#resource-minecraft-version").value.trim(),
+          loader: $("#resource-loader").value,
+          releaseVersion: $("#resource-release-version").value.trim(),
+          fileName: file.name,
+          fileSize: file.size,
+        };
+        sessionStorage.setItem(
+          "modden_resource_draft",
+          JSON.stringify(payload),
+        );
+        note(
+          "compose-notice",
+          "Biểu mẫu và tệp đã được kiểm tra. Upload bền vững sẽ được kích hoạt ngay khi object storage production được kết nối; tệp chưa được gửi đi.",
+          "ok",
+        );
       });
       $("#backup-download").onclick = async () => {
         const button = $("#backup-download");
