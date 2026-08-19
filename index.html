@@ -381,6 +381,64 @@
     font-size:12px; font-weight:700;
   }
 
+  .field-select{
+    width:100%;
+    padding: 11px 13px;
+    border-radius:8px;
+    border:1px solid var(--border-strong);
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+    background:#fff;
+    color: var(--ink);
+  }
+  #post-content{
+    width:100%;
+    padding: 11px 13px;
+    border-radius:8px;
+    border:1px solid var(--border-strong);
+    font-size:14px;
+    font-family:'Inter',sans-serif;
+    background:#fff;
+    color: var(--ink);
+    resize: vertical;
+  }
+  #post-content:focus, .field-select:focus{
+    outline:2px solid var(--accent); outline-offset:1px; border-color:transparent;
+  }
+
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background: rgba(20,22,26,0.5);
+    z-index: 50;
+    align-items:center;
+    justify-content:center;
+    padding: 24px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-card{
+    background:#fff;
+    border-radius:16px;
+    padding: 28px;
+    max-width: 480px;
+    width:100%;
+    max-height: 90vh;
+    overflow-y:auto;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.35);
+  }
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 18px;
+  }
+  .modal-close{
+    font-size: 22px;
+    line-height:1;
+    color: var(--muted);
+    background:none; border:none; cursor:pointer;
+    padding: 4px 8px;
+  }
+  .modal-close:hover{ color: var(--ink); }
+
   /* ---------------- JOIN / FOOTER CTA ---------------- */
   .cta-band{
     padding: 90px 0;
@@ -455,45 +513,45 @@
         <span class="section-label">Latest</span>
         <div class="section-title">Recent posts from the community</div>
       </div>
-      <a href="#" class="btn-text">View all →</a>
+      <button class="btn-text" id="write-post-link" type="button">Write a post →</button>
     </div>
 
-    <div class="post-list">
-      <div class="post">
-        <span class="post-tag tag-code">Dev log</span>
-        <div>
-          <div class="post-title"><a href="#">Fixing a loader mismatch in the dependency downloader</a></div>
-          <div class="post-meta">Posted by Uyen · 8 comments</div>
-        </div>
-        <span class="post-date">2h ago</span>
-      </div>
-      <div class="post">
-        <span class="post-tag tag-shader">Shader</span>
-        <div>
-          <div class="post-title"><a href="#">Writing a fresnel water shader without OptiFine</a></div>
-          <div class="post-meta">Posted by Lam · 14 comments</div>
-        </div>
-        <span class="post-date">1d ago</span>
-      </div>
-      <div class="post">
-        <span class="post-tag tag-code">Mixin</span>
-        <div>
-          <div class="post-title"><a href="#">Why "No refMap loaded" happens with split source sets</a></div>
-          <div class="post-meta">Posted by Khang · 6 comments</div>
-        </div>
-        <span class="post-date">3d ago</span>
-      </div>
-      <div class="post">
-        <span class="post-tag tag-guide">Guide</span>
-        <div>
-          <div class="post-title"><a href="#">Setting up Fabric Loom in Termux, start to finish</a></div>
-          <div class="post-meta">Posted by Huy · 21 comments</div>
-        </div>
-        <span class="post-date">5d ago</span>
-      </div>
+    <div class="post-list" id="post-list">
+      <div class="post"><div class="post-meta">Loading posts…</div></div>
     </div>
   </div>
 </section>
+
+<div class="modal-overlay" id="post-modal-overlay">
+  <div class="modal-card">
+    <div class="modal-head">
+      <span class="section-title" style="font-size:20px;">Write a post</span>
+      <button class="modal-close" id="post-modal-close" type="button">&times;</button>
+    </div>
+    <p class="auth-error" id="post-error"></p>
+    <form id="post-form">
+      <div class="field">
+        <label for="post-title">Title</label>
+        <input id="post-title" type="text" placeholder="What did you build or fix?" required>
+      </div>
+      <div class="field">
+        <label for="post-category">Category</label>
+        <select id="post-category" class="field-select">
+          <option>Dev log</option>
+          <option>Guide</option>
+          <option>Shader</option>
+          <option>Showcase</option>
+          <option>Q&A</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="post-content">Content</label>
+        <textarea id="post-content" rows="6" placeholder="Share the details, logs, or what you learned…" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary auth-submit" id="post-submit-btn">Publish post</button>
+    </form>
+  </div>
+</div>
 
 <section class="section" id="categories">
   <div class="wrap">
@@ -599,7 +657,7 @@
     <h2>Have something to share?</h2>
     <p>A dev log, a fix you finally figured out, or a project you shipped — post it in a few minutes.</p>
     <div class="hero-actions">
-      <a href="#join" class="btn btn-primary">Write a post</a>
+      <button class="btn btn-primary" id="write-post-link-2" type="button">Write a post</button>
     </div>
   </div>
 </section>
@@ -740,6 +798,128 @@
       renderLoggedIn(JSON.parse(userRaw));
     }
   })();
+
+  // ---------------- Posts feed ----------------
+
+  const postList = document.getElementById("post-list");
+
+  function timeAgo(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr + "Z").getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
+  function tagClass(category) {
+    const map = { "Shader": "tag-shader", "Guide": "tag-guide" };
+    return map[category] || "tag-code";
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function loadPosts() {
+    try {
+      const res = await fetch(`${API_BASE}/posts`);
+      if (!res.ok) throw new Error("Failed to load posts");
+      const posts = await res.json();
+
+      if (posts.length === 0) {
+        postList.innerHTML = `<div class="post"><div class="post-meta">No posts yet — be the first to write one.</div></div>`;
+        return;
+      }
+
+      postList.innerHTML = posts.map((p) => `
+        <div class="post">
+          <span class="post-tag ${tagClass(p.category)}">${escapeHtml(p.category)}</span>
+          <div>
+            <div class="post-title">${escapeHtml(p.title)}</div>
+            <div class="post-meta">Posted by ${escapeHtml(p.author.name || p.author.email)}</div>
+          </div>
+          <span class="post-date">${timeAgo(p.created_at)}</span>
+        </div>
+      `).join("");
+    } catch (err) {
+      postList.innerHTML = `<div class="post"><div class="post-meta">Couldn't load posts. The server may be waking up — refresh in a moment.</div></div>`;
+    }
+  }
+
+  loadPosts();
+
+  // ---------------- Write a post modal ----------------
+
+  const postModal = document.getElementById("post-modal-overlay");
+  const postForm = document.getElementById("post-form");
+  const postSubmitBtn = document.getElementById("post-submit-btn");
+  const postError = document.getElementById("post-error");
+
+  function openPostModal() {
+    const token = sessionStorage.getItem("mc_modding_token");
+    if (!token) {
+      document.getElementById("join").scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+    postModal.classList.add("show");
+  }
+  function closePostModal() {
+    postModal.classList.remove("show");
+    postError.classList.remove("show");
+  }
+
+  document.getElementById("write-post-link").addEventListener("click", openPostModal);
+  document.getElementById("write-post-link-2").addEventListener("click", openPostModal);
+  document.getElementById("post-modal-close").addEventListener("click", closePostModal);
+  postModal.addEventListener("click", (e) => {
+    if (e.target === postModal) closePostModal();
+  });
+
+  postForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    postError.classList.remove("show");
+    const token = sessionStorage.getItem("mc_modding_token");
+    if (!token) {
+      closePostModal();
+      document.getElementById("join").scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    const title = document.getElementById("post-title").value.trim();
+    const category = document.getElementById("post-category").value;
+    const content = document.getElementById("post-content").value.trim();
+
+    postSubmitBtn.disabled = true;
+    postSubmitBtn.textContent = "Publishing…";
+
+    try {
+      const res = await fetch(`${API_BASE}/posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title, category, content }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Couldn't publish the post.");
+
+      postForm.reset();
+      closePostModal();
+      loadPosts();
+    } catch (err) {
+      postError.textContent = err.message;
+      postError.classList.add("show");
+    } finally {
+      postSubmitBtn.disabled = false;
+      postSubmitBtn.textContent = "Publish post";
+    }
+  });
 </script>
 
 </body>
