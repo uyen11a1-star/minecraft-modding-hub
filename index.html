@@ -1227,9 +1227,10 @@
             <label for="resource-summary">Tóm tắt ngắn</label
             ><input
               id="resource-summary"
+              minlength="10"
               maxlength="220"
               required
-              placeholder="Điểm chính người chơi nên biết trước khi cài"
+              placeholder="Ít nhất 10 ký tự: điểm chính người chơi cần biết"
             />
           </div>
           <div class="field">
@@ -1279,8 +1280,9 @@
             <label for="compose-content">Mô tả &amp; changelog</label
             ><textarea
               id="compose-content"
+              minlength="20"
               required
-              placeholder="Mô tả tính năng, hướng dẫn cài đặt, thay đổi của phiên bản này…"
+              placeholder="Ít nhất 20 ký tự: mô tả tính năng, cài đặt và thay đổi…"
             ></textarea>
           </div>
           <button class="btn lime wide" type="submit">
@@ -1416,6 +1418,37 @@
         const el = $("#" + id);
         el.className = "notice";
         el.textContent = "";
+      }
+      const resourceFieldNames = {
+        name: "Tên tài nguyên",
+        summary: "Tóm tắt ngắn",
+        description: "Mô tả & changelog",
+        kind: "Loại tài nguyên",
+        minecraft_version: "Minecraft version",
+        loader: "Loader / server software",
+        release_version: "Phiên bản phát hành",
+        file_name: "Tệp phát hành",
+        file_size: "Kích thước tệp",
+      };
+      function apiErrorText(detail, fallback) {
+        if (typeof detail === "string" && detail.trim()) return detail;
+        if (Array.isArray(detail)) {
+          const messages = detail
+            .map((item) => {
+              if (!item || typeof item !== "object") return "";
+              const location = Array.isArray(item.loc) ? item.loc.at(-1) : "";
+              const field = resourceFieldNames[location] || location || "Dữ liệu";
+              const message =
+                typeof item.msg === "string" ? item.msg : "không hợp lệ";
+              return `${field}: ${message}`;
+            })
+            .filter(Boolean);
+          if (messages.length) return messages.join(" ");
+        }
+        if (detail && typeof detail === "object" && typeof detail.message === "string") {
+          return detail.message;
+        }
+        return fallback;
       }
       function closeDrawers() {
         $$(".drawer").forEach((x) => x.classList.remove("show"));
@@ -1663,9 +1696,7 @@
           });
           const data = await response.json();
           if (!response.ok)
-            throw new Error(
-              data.detail || "Không thể gửi resource để kiểm duyệt.",
-            );
+            throw new Error(apiErrorText(data.detail, "Không thể gửi resource để kiểm duyệt."));
           const statusText =
             data.status === "approved"
               ? "đã được AI duyệt và có thể xuất hiện trong thư viện"
