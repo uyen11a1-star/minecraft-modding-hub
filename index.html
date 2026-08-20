@@ -1020,11 +1020,14 @@
             </form>
             <div class="filters" id="filter-bar">
               <button class="filter active" data-filter="all">Tất cả</button
-              ><button class="filter" data-filter="Dev log">Dev log</button
-              ><button class="filter" data-filter="Guide">Guide</button
-              ><button class="filter" data-filter="Shader">Shader</button
-              ><button class="filter" data-filter="Showcase">Showcase</button
-              ><button class="filter" data-filter="Q&A">Q&amp;A</button>
+              ><button class="filter" data-filter="Mod">Mod</button
+              ><button class="filter" data-filter="Resource Pack">
+                Resource Pack</button
+              ><button class="filter" data-filter="Shader Pack">
+                Shader Pack</button
+              ><button class="filter" data-filter="Datapack">Datapack</button
+              ><button class="filter" data-filter="Plugin">Plugin</button
+              ><button class="filter" data-filter="Modpack">Modpack</button>
             </div>
             <div class="post-grid" id="post-grid">
               <div class="empty">
@@ -1281,7 +1284,7 @@
             ></textarea>
           </div>
           <button class="btn lime wide" type="submit">
-            Chuẩn bị tệp phát hành →
+            Gửi AI kiểm duyệt →
           </button>
         </form>
       </div>
@@ -1343,7 +1346,12 @@
         "https://mc-modding-backend.onrender.com";
       const TOKEN_KEY = "mc_modding_token",
         USER_KEY = "mc_modding_user";
-      const state = { posts: [], filter: "all", authMode: "signup" };
+      const state = {
+        posts: [],
+        resources: [],
+        filter: "all",
+        authMode: "signup",
+      };
       const $ = (s) => document.querySelector(s),
         $$ = (s) => [...document.querySelectorAll(s)];
       const storage = {
@@ -1437,54 +1445,54 @@
         if (!logged) return;
         $("#profile-name").textContent = user.name || user.email.split("@")[0];
         $("#profile-email").textContent = user.email || "Tài khoản modden";
-        const mine = state.posts.filter(
-          (post) =>
-            post.author?.email &&
+        const mine = state.resources.filter(
+          (resource) =>
+            resource.author?.email &&
             user.email &&
-            post.author.email.toLowerCase() === user.email.toLowerCase(),
+            resource.author.email.toLowerCase() === user.email.toLowerCase(),
         );
         $("#my-post-count").textContent = mine.length;
         $("#my-category-count").textContent = new Set(
-          mine.map((post) => post.category),
+          mine.map((resource) => resource.kind),
         ).size;
         $("#my-post-list").innerHTML = mine.length
           ? mine
               .map(
-                (post) =>
-                  `<div class="rule"><span class="mono">◌</span><div><b>${esc(post.title)}</b><p>${esc(post.category || "Community")} · ${date(post.created_at || "")}</p></div><span>↗</span></div>`,
+                (resource) =>
+                  `<div class="rule"><span class="mono">${resource.status === "approved" ? "✓" : "…"}</span><div><b>${esc(resource.name)}</b><p>${esc(resource.kind)} · ${resource.status === "pending" ? "Đang chờ AI duyệt" : resource.status === "rejected" ? "Cần chỉnh sửa" : "Đã công khai"}</p></div><span>↗</span></div>`,
               )
               .join("")
-          : '<div class="rule"><span class="mono">00</span><div><b>Chưa có tín hiệu nào.</b><p>Mở studio để đăng bài đầu tiên của bạn.</p></div></div>';
+          : '<div class="rule"><span class="mono">00</span><div><b>Chưa có tài nguyên nào.</b><p>Mở studio để đăng resource đầu tiên của bạn.</p></div></div>';
       }
       function renderPosts() {
         const query = $("#search-input").value.trim().toLowerCase();
-        const shown = state.posts.filter(
-          (post) =>
-            (state.filter === "all" || post.category === state.filter) &&
+        const shown = state.resources.filter(
+          (resource) =>
+            (state.filter === "all" || resource.kind === state.filter) &&
             (!query ||
-              `${post.title || ""} ${post.content || ""} ${post.category || ""}`
+              `${resource.name || ""} ${resource.summary || ""} ${resource.kind || ""} ${resource.minecraft_version || ""}`
                 .toLowerCase()
                 .includes(query)),
         );
         const grid = $("#post-grid");
         if (!shown.length) {
-          grid.innerHTML = `<div class="empty"><h3>${state.posts.length ? "Không có tín hiệu trùng khớp." : "Luồng này đang yên tĩnh."}</h3><p>${state.posts.length ? "Đổi từ khóa hoặc bộ lọc để tìm tiếp." : "Đăng nhập và mở studio để đặt tín hiệu đầu tiên vào cộng đồng."}</p></div>`;
+          grid.innerHTML = `<div class="empty"><h3>${state.resources.length ? "Không có tài nguyên trùng khớp." : "Thư viện đang chờ resource được duyệt."}</h3><p>${state.resources.length ? "Đổi từ khóa hoặc bộ lọc để tìm tiếp." : "Resource chỉ xuất hiện tại đây sau khi AI duyệt metadata."}</p></div>`;
           return;
         }
         grid.innerHTML = shown
-          .map((post) => {
-            const index = state.posts.indexOf(post);
-            return `<article class="post" role="button" tabindex="0" data-post-index="${index}" aria-label="Mở ${esc(post.title)}"><span class="mono" style="color:#c9ff62">${esc(post.category || "COMMUNITY")}</span><h3>${esc(post.title)}</h3><p>${esc(post.content)}</p><div class="post-meta"><span>${esc(post.author?.name || post.author?.email || "Thành viên modden")}</span><span>${date(post.created_at || "")}</span></div></article>`;
+          .map((resource) => {
+            const index = state.resources.indexOf(resource);
+            return `<article class="post" role="button" tabindex="0" data-post-index="${index}" aria-label="Mở ${esc(resource.name)}"><span class="mono" style="color:#c9ff62">${esc(resource.kind)}</span><h3>${esc(resource.name)}</h3><p>${esc(resource.summary)}</p><div class="post-meta"><span>${esc(resource.minecraft_version)} · ${esc(resource.loader)}</span><span>${esc(resource.release_version)}</span></div></article>`;
           })
           .join("");
       }
       async function loadPosts() {
         try {
-          const response = await fetch(API_BASE + "/posts");
+          const response = await fetch(API_BASE + "/resources");
           if (!response.ok) throw new Error();
-          state.posts = await response.json();
+          state.resources = await response.json();
           $("#stream-status").textContent =
-            `${state.posts.length} SIGNAL${state.posts.length === 1 ? "" : "S"} / LIVE`;
+            `${state.resources.length} RESOURCE${state.resources.length === 1 ? "" : "S"} / APPROVED`;
           renderPosts();
           renderAccount();
         } catch {
@@ -1494,13 +1502,14 @@
         }
       }
       function detail(index) {
-        const post = state.posts[index];
-        if (!post) return;
-        $("#detail-category").textContent = post.category || "Community signal";
-        $("#detail-title").textContent = post.title || "Không có tiêu đề";
+        const resource = state.resources[index];
+        if (!resource) return;
+        $("#detail-category").textContent =
+          resource.kind || "Minecraft resource";
+        $("#detail-title").textContent = resource.name || "Không có tiêu đề";
         $("#detail-data").innerHTML =
-          `<span>${esc(post.author?.name || post.author?.email || "Thành viên modden")}</span><span>${date(post.created_at || "")}</span>`;
-        $("#detail-content").textContent = post.content || "";
+          `<span>${esc(resource.author?.name || resource.author?.email || "Thành viên modden")}</span><span>${esc(resource.minecraft_version)} · ${esc(resource.loader)} · ${esc(resource.release_version)}</span>`;
+        $("#detail-content").textContent = resource.description || "";
         openDrawer("detail-drawer");
       }
       function compose() {
@@ -1638,21 +1647,47 @@
           kind: $("#resource-kind").value,
           name: $("#compose-title").value.trim(),
           summary: $("#resource-summary").value.trim(),
-          minecraftVersion: $("#resource-minecraft-version").value.trim(),
+          minecraft_version: $("#resource-minecraft-version").value.trim(),
           loader: $("#resource-loader").value,
-          releaseVersion: $("#resource-release-version").value.trim(),
-          fileName: file.name,
-          fileSize: file.size,
+          release_version: $("#resource-release-version").value.trim(),
+          file_name: file.name,
+          file_size: file.size,
+          description: $("#compose-content").value.trim(),
         };
-        sessionStorage.setItem(
-          "modden_resource_draft",
-          JSON.stringify(payload),
-        );
-        note(
-          "compose-notice",
-          "Biểu mẫu và tệp đã được kiểm tra. Upload bền vững sẽ được kích hoạt ngay khi object storage production được kết nối; tệp chưa được gửi đi.",
-          "ok",
-        );
+        submit.disabled = true;
+        try {
+          const response = await fetch(API_BASE + "/resources", {
+            method: "POST",
+            headers: headers(true),
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          if (!response.ok)
+            throw new Error(
+              data.detail || "Không thể gửi resource để kiểm duyệt.",
+            );
+          const statusText =
+            data.status === "approved"
+              ? "đã được AI duyệt và có thể xuất hiện trong thư viện"
+              : data.status === "rejected"
+                ? "bị AI từ chối; hãy xem lý do và chỉnh metadata"
+                : "đang chờ AI duyệt";
+          note(
+            "compose-notice",
+            `Metadata đã được gửi: resource ${statusText}. File ${file.name} chỉ được đưa lên storage khi storage production hoàn tất. ${data.moderation_reason || ""}`,
+            "ok",
+          );
+          $("#compose-form").reset();
+          $("#resource-file-status").textContent = "Chưa chọn tệp.";
+          await loadPosts();
+        } catch (error) {
+          note(
+            "compose-notice",
+            error.message || "Không thể gửi resource để kiểm duyệt.",
+          );
+        } finally {
+          submit.disabled = false;
+        }
       });
       $("#backup-download").onclick = async () => {
         const button = $("#backup-download");
